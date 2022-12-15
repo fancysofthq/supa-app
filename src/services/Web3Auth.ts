@@ -1,5 +1,6 @@
 import { ethers } from "ethers";
 import Web3Token from "web3-token";
+import { SignOpts } from "web3-token/lib/interfaces";
 
 /**
  * Wraps a request in a Web3-Token authentication header.
@@ -21,16 +22,18 @@ export function authRequest(req: Request, token: string) {
 export async function ensureAuth(
   provider: ethers.providers.Web3Provider,
   lsKey: string,
+  signOpts: SignOpts,
   apiAuth: (signature: string) => Promise<string>
 ): Promise<string> {
   let token = window.localStorage.getItem(lsKey);
 
   if (!token) {
     const signer = provider.getSigner();
+    signOpts.chain_id ||= (await provider.getNetwork()).chainId;
 
     const signature = await Web3Token.sign(
       async (msg: string) => await signer.signMessage(msg),
-      "7d"
+      signOpts
     );
 
     token = await apiAuth(signature);
