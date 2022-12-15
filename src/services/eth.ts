@@ -18,7 +18,7 @@ const provider: ShallowRef<ethers.providers.Web3Provider | undefined> = ref();
 const account: ShallowRef<Account | undefined> = ref();
 const balance: Ref<BigNumber | undefined> = ref();
 
-interface AddEthereumChainParameter {
+export interface AddEthereumChainParameter {
   chainId: string; // A 0x-prefixed hexadecimal string
   chainName: string;
   nativeCurrency: {
