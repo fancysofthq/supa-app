@@ -5,7 +5,7 @@
     "name": "Fancy Software",
     "url": "http://fancysoft.eth"
   },
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"
   },
