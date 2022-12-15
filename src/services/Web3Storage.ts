@@ -5,11 +5,11 @@ import * as raw from "multiformats/codecs/raw";
 import * as dagCbor from "@ipld/dag-cbor";
 import { CarReader } from "@ipld/car";
 import * as IPFT from "./eth/IPFT";
-import { Version } from "multiformats/cid";
+import { CID, Version } from "multiformats/cid";
 
 export class Blockstore {
   constructor(
-    public readonly root: Block<unknown, number, number, Version>,
+    public readonly rootCid: CID,
     public readonly blocks: Block<unknown, number, number, Version>[]
   ) {}
 
@@ -17,10 +17,14 @@ export class Blockstore {
     return new CarReader(
       {
         version: 1,
-        roots: [this.root.cid],
+        roots: [this.rootCid],
       },
-      [this.root, ...this.blocks]
+      this.blocks
     );
+  }
+
+  get rootBlock(): Block<unknown, number, number, Version> {
+    return this.blocks.find((block) => block.cid.equals(this.rootCid))!;
   }
 }
 
@@ -31,7 +35,7 @@ export interface Blockifiable {
    */
   blockify(): Promise<{
     json: any;
-    block: Block<unknown, number, number, 1>;
+    blockstore: Blockstore;
   }>;
 }
 
@@ -44,7 +48,7 @@ export async function packIpft(
   ipftTag: IPFT.Tag
 ): Promise<Blockstore> {
   // 1. Block-ify the token.
-  const { json: metadataJSON, block: metadataRootBlock } =
+  const { json: metadataJSON, blockstore: metadataBlockstore } =
     await token.blockify();
 
   // 2. Encode the JSON metadata.
@@ -57,7 +61,7 @@ export async function packIpft(
   // 3. Encode the root CBOR.
   const root = await encodeBlock({
     value: {
-      root: metadataRootBlock.cid,
+      root: metadataBlockstore.rootCid,
       "metadata.json": metadataJSONFile.cid,
       ipft: ipftTag.toBytes(),
     },
@@ -65,19 +69,17 @@ export async function packIpft(
     hasher: keccak256,
   });
 
-  return new Blockstore(
+  return new Blockstore(root.cid, [
     new Block({
       cid: root.cid,
       bytes: root.bytes,
       value: root.value,
     }),
-    [
-      new Block({
-        cid: metadataJSONFile.cid,
-        bytes: metadataJSONFile.bytes,
-        value: metadataJSONFile.value,
-      }),
-      metadataRootBlock,
-    ]
-  );
+    new Block({
+      cid: metadataJSONFile.cid,
+      bytes: metadataJSONFile.bytes,
+      value: metadataJSONFile.value,
+    }),
+    ...metadataBlockstore.blocks,
+  ]);
 }
